@@ -30,4 +30,7 @@ int passenger_find_index(PassengerList *L, const char *id_num);
 
 void passenger_list_all(PassengerList *L);
 
+int save_passengers(const char *filename, PassengerList *L);
+int load_passengers(const char *filename, PassengerList *L);
+
 #endif 

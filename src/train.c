@@ -14,8 +14,7 @@ typedef struct {
 #define HASH_BUCKETS 1031
 
 static HashTable *train_ht = NULL;
-
-static void *xmalloc(size_t n) { void *p = malloc(n); if (!p) { perror("malloc"); exit(1); } return p; }
+static void *xmalloc(size_t n) { void *p = malloc(n); if (!p) { perror("malloc"); exit(1);} return p; }
 
 void trainlist_init(TrainList *L) {
     L->data = xmalloc(sizeof(Train) * INITIAL_CAPACITY);
@@ -80,9 +79,7 @@ static int train_create_seatmap_if_missing_internal(Train *t, const char *date) 
         if (sc > 0 && sm->segment_count > 0) {
             sm->class_seat_seg[c] = calloc(sc * sm->segment_count, 1);
             if (!sm->class_seat_seg[c]) { perror("calloc"); exit(1); }
-        } else {
-            sm->class_seat_seg[c] = NULL;
-        }
+        } else sm->class_seat_seg[c] = NULL;
     }
     t->seatmap_count++;
     return t->seatmap_count - 1;
@@ -98,9 +95,7 @@ static int seatmap_allocate_internal(TrainDateSeatMap *sm, Train *t, int seat_cl
     for (int s = 0; s < sc; ++s) {
         int base = s * segs;
         int ok = 1;
-        for (int seg = from_idx; seg < to_idx; ++seg) {
-            if (arr[base + seg]) { ok = 0; break; }
-        }
+        for (int seg = from_idx; seg < to_idx; ++seg) if (arr[base + seg]) { ok = 0; break; }
         if (ok) {
             for (int seg = from_idx; seg < to_idx; ++seg) arr[base + seg] = 1;
             return s;
@@ -118,7 +113,18 @@ static void seatmap_release_internal(TrainDateSeatMap *sm, Train *t, int seat_cl
     for (int seg = from_idx; seg < to_idx; ++seg) arr[base + seg] = 0;
 }
 
-/* API implementations */
+static int seatmap_mark_index_internal(TrainDateSeatMap *sm, Train *t, int seat_class, int seat_index, int from_idx, int to_idx) {
+    if (!sm) return -1;
+    int segs = sm->segment_count;
+    if (!sm->class_seat_seg[seat_class]) return -1;
+    if (seat_index < 0 || seat_index >= t->seat_count[seat_class]) return -1;
+    if (from_idx < 0 || to_idx <= from_idx || to_idx > segs) return -1;
+    unsigned char *arr = sm->class_seat_seg[seat_class];
+    int base = seat_index * segs;
+    for (int seg = from_idx; seg < to_idx; ++seg) arr[base + seg] = 1;
+    return 0;
+}
+
 
 int train_add(TrainList *L, Train *t) {
     if (L->size >= L->capacity) trainlist_expand(L);
@@ -229,4 +235,87 @@ int train_release_seat(TrainList *TL, const char *train_id, const char *date,
     TrainDateSeatMap *sm = (TrainDateSeatMap*)t->seatmaps + sm_idx;
     seatmap_release_internal(sm, t, seat_class, seat_index, from_idx, to_idx);
     return 0;
+}
+
+int train_mark_seat(TrainList *TL, const char *train_id, const char *date,
+                    int seat_class, int seat_index, int from_idx, int to_idx) {
+    int tidx = train_find_index(TL, train_id);
+    if (tidx == -1) return -1;
+    Train *t = &TL->data[tidx];
+    int sm_idx = train_create_seatmap_if_missing_internal(t, date);
+    TrainDateSeatMap *sm = (TrainDateSeatMap*)t->seatmaps + sm_idx;
+    return seatmap_mark_index_internal(sm, t, seat_class, seat_index, from_idx, to_idx);
+}
+
+
+int save_trains(const char *filename, TrainList *L) {
+    FILE *f = fopen(filename, "w");
+    if (!f) return 0;
+    fprintf(f, "%d\n", L->size);
+    for (int i = 0; i < L->size; ++i) {
+        Train *t = &L->data[i];
+        fprintf(f, "%s|%s|%s|%s|%.2f|%d|%d|%d|%d|%d|%d|%d|%.3f|%.3f|%.3f|%.3f\n",
+                t->train_id, t->from, t->to, t->depart_time, t->base_price, t->running,
+                t->duration_minutes, t->stop_count, t->seat_count[0], t->seat_count[1],
+                t->seat_count[2], t->seat_count[3],
+                t->seat_price_coef[0], t->seat_price_coef[1], t->seat_price_coef[2], t->seat_price_coef[3]);
+        for (int j = 0; j < t->stop_count; ++j) {
+            Stop *s = &t->stops[j];
+            fprintf(f, "%s|%s|%s|%d\n", s->name, s->arrive, s->depart, s->distance);
+        }
+    }
+    fclose(f);
+    return 1;
+}
+
+int load_trains(const char *filename, TrainList *L) {
+    FILE *f = fopen(filename, "r");
+    if (!f) return 0;
+    int count = 0;
+    if (fscanf(f, "%d\n", &count) != 1) { fclose(f); return 0; }
+    char line[1024];
+    for (int i = 0; i < count; ++i) {
+        if (!fgets(line, sizeof(line), f)) { fclose(f); return 0; }
+        size_t ln = strlen(line); if (ln && line[ln-1]=='\n') line[ln-1]=0;
+        char *parts[20]; int p = 0;
+        char *tok = strtok(line, "|");
+        while (tok && p < 20) { parts[p++] = tok; tok = strtok(NULL, "|"); }
+        if (p < 16) { fclose(f); return 0; }
+        Train t;
+        memset(&t, 0, sizeof(t));
+        strncpy(t.train_id, parts[0], ID_LEN-1);
+        strncpy(t.from, parts[1], STATION_LEN-1);
+        strncpy(t.to, parts[2], STATION_LEN-1);
+        strncpy(t.depart_time, parts[3], TIME_LEN-1);
+        t.base_price = atof(parts[4]);
+        t.running = atoi(parts[5]);
+        t.duration_minutes = atoi(parts[6]);
+        t.stop_count = atoi(parts[7]);
+        t.seat_count[0] = atoi(parts[8]); t.seat_count[1] = atoi(parts[9]);
+        t.seat_count[2] = atoi(parts[10]); t.seat_count[3] = atoi(parts[11]);
+        t.seat_price_coef[0] = atof(parts[12]); t.seat_price_coef[1] = atof(parts[13]);
+        t.seat_price_coef[2] = atof(parts[14]); t.seat_price_coef[3] = atof(parts[15]);
+        if (t.stop_count > 0) {
+            t.stops = xmalloc(sizeof(Stop) * t.stop_count);
+            for (int j = 0; j < t.stop_count; ++j) {
+                if (!fgets(line, sizeof(line), f)) { fclose(f); return 0; }
+                size_t ln2 = strlen(line); if (ln2 && line[ln2-1]=='\n') line[ln2-1]=0;
+                char *sp[4]; int q = 0;
+                char *tok2 = strtok(line, "|");
+                while (tok2 && q < 4) { sp[q++] = tok2; tok2 = strtok(NULL, "|"); }
+                if (q < 4) { fclose(f); return 0; }
+                strncpy(t.stops[j].name, sp[0], STATION_LEN-1);
+                strncpy(t.stops[j].arrive, sp[1], TIME_LEN-1);
+                strncpy(t.stops[j].depart, sp[2], TIME_LEN-1);
+                t.stops[j].distance = atoi(sp[3]);
+            }
+        } else {
+            t.stops = NULL;
+        }
+        /* seatmaps 初始化留空（通过 bookings 恢复） */
+        t.seatmaps = NULL; t.seatmap_capacity = 0; t.seatmap_count = 0;
+        train_add(L, &t);
+    }
+    fclose(f);
+    return 1;
 }

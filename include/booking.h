@@ -18,7 +18,7 @@ typedef struct {
     double price;
     char seat_no[16];
     int seat_class;
-    int seat_index;    
+    int seat_index;   
     int from_stop_idx; 
     int to_stop_idx;
     int canceled;
@@ -30,22 +30,22 @@ typedef struct {
     int capacity;
 } BookingList;
 
-
 void bookinglist_init(BookingList *L);
 void bookinglist_free(BookingList *L);
-
 
 int booking_create(BookingList *BL, TrainList *TL, PassengerList *PL,
                    const char *date, const char *train_id,
                    const char *from, const char *to,
                    const char *passenger_id, int seat_class, char *out_order_id, size_t order_len);
 
-
 int booking_cancel(BookingList *BL, const char *order_id, TrainList *TL);
-
 
 int booking_find_index(BookingList *BL, const char *order_id);
 
 void booking_list_all(BookingList *L);
 
-#endif 
+
+int save_bookings(const char *filename, BookingList *L);
+int load_bookings(const char *filename, BookingList *L, TrainList *TL);
+
+#endif /* BOOKING_H */

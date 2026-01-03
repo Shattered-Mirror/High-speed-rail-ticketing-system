@@ -6,7 +6,6 @@
 #include "passenger.h"
 #include "booking.h"
 
-
 static void input_line(const char *prompt, char *buf, size_t buflen) {
     printf("%s", prompt);
     if (!fgets(buf, buflen, stdin)) { buf[0]=0; return; }
@@ -19,15 +18,17 @@ static double input_double(const char *prompt) {
     char buf[64]; input_line(prompt, buf, sizeof(buf)); return atof(buf);
 }
 
+/* menus */
 int main_menu() {
-    puts("==== 高铁订票系统（模块化版） ====");
+    puts("==== 高铁订票系统（模块化+持久化） ====");
     puts("1. 车次信息管理");
     puts("2. 乘客信息管理");
     puts("3. 订票信息管理");
+    puts("4. 保存所有数据");
+    puts("5. 载入所有数据");
     puts("0. 退出");
     return input_int("请选择: ");
 }
-
 int train_menu() {
     puts("---- 车次管理 ----");
     puts("1. 增加车次");
@@ -38,7 +39,6 @@ int train_menu() {
     puts("0. 返回");
     return input_int("选择: ");
 }
-
 int passenger_menu() {
     puts("---- 乘客管理 ----");
     puts("1. 添加乘客");
@@ -49,7 +49,6 @@ int passenger_menu() {
     puts("0. 返回");
     return input_int("选择: ");
 }
-
 int booking_menu() {
     puts("---- 订票管理 ----");
     puts("1. 订票");
@@ -63,22 +62,37 @@ int booking_menu() {
     return input_int("选择: ");
 }
 
+void save_all(TrainList *TL, PassengerList *PL, BookingList *BL) {
+    if (save_trains("trains.txt", TL)) printf("已保存 trains.txt\n"); else printf("保存 trains.txt 失败\n");
+    if (save_passengers("passengers.txt", PL)) printf("已保存 passengers.txt\n"); else printf("保存 passengers.txt 失败\n");
+    if (save_bookings("bookings.txt", BL)) printf("已保存 bookings.txt\n"); else printf("保存 bookings.txt 失败\n");
+}
+
+void load_all(TrainList *TL, PassengerList *PL, BookingList *BL) {
+    if (load_trains("trains.txt", TL)) printf("已载入 trains.txt\n"); else printf("未找到 trains.txt 或载入失败\n");
+    if (load_passengers("passengers.txt", PL)) printf("已载入 passengers.txt\n"); else printf("未找到 passengers.txt 或载入失败\n");
+    if (load_bookings("bookings.txt", BL, TL)) printf("已载入 bookings.txt 并重建座位占用\n"); else printf("未找到 bookings.txt 或载入失败\n");
+}
 
 int main(void) {
     TrainList TL; PassengerList PL; BookingList BL;
     trainlist_init(&TL); passengerlist_init(&PL); bookinglist_init(&BL);
+
+    load_all(&TL, &PL, &BL);
+
     for (;;) {
         int ch = main_menu();
         if (ch == 0) {
-            printf("退出（内存数据会丢失）\n");
+            char buf[8]; input_line("退出并保存数据? (y/n): ", buf, sizeof(buf));
+            if (buf[0]=='y' || buf[0]=='Y') save_all(&TL, &PL, &BL);
+            printf("退出\n");
             break;
         } else if (ch == 1) {
             for (;;) {
                 int c = train_menu();
                 if (c == 0) break;
                 if (c == 1) {
-                  
-                    Train t;
+                    Train t; char tmp[256];
                     input_line("输入车次号: ", t.train_id, sizeof(t.train_id));
                     input_line("输入始发站: ", t.from, sizeof(t.from));
                     input_line("输入终到站: ", t.to, sizeof(t.to));
@@ -116,7 +130,6 @@ int main(void) {
                     input_line("车次号（回车保留）: ", buf, sizeof(buf)); if (strlen(buf)) strncpy(t.train_id, buf, ID_LEN-1);
                     input_line("始发站（回车保留）: ", buf, sizeof(buf)); if (strlen(buf)) strncpy(t.from, buf, STATION_LEN-1);
                     input_line("终到站（回车保留）: ", buf, sizeof(buf)); if (strlen(buf)) strncpy(t.to, buf, STATION_LEN-1);
-                   
                     train_update(&TL, id, &t);
                     puts("修改完成");
                 } else if (c == 4) {
@@ -127,9 +140,8 @@ int main(void) {
                         Train *t = train_get(&TL, idx);
                         printf("车次: %s  %s->%s  发车:%s  基价:%.2f\n", t->train_id, t->from, t->to, t->depart_time, t->base_price);
                     }
-                } else if (c == 5) {
-                    train_list_all(&TL);
-                } else puts("无效选项");
+                } else if (c == 5) train_list_all(&TL);
+                else puts("无效选项");
             }
         } else if (ch == 2) {
             for (;;) {
@@ -166,9 +178,8 @@ int main(void) {
                         Passenger *p = &PL.data[idx];
                         printf("姓名:%s  证件:%s  手机:%s\n", p->name, p->id_num, p->phone);
                     }
-                } else if (c == 5) {
-                    passenger_list_all(&PL);
-                } else puts("无效选项");
+                } else if (c == 5) passenger_list_all(&PL);
+                else puts("无效选项");
             }
         } else if (ch == 3) {
             for (;;) {
@@ -228,21 +239,29 @@ int main(void) {
                     int idx = train_find_index(&TL, train_id);
                     if (idx == -1) { puts("未找到车次"); continue; }
                     Train *t = train_get(&TL, idx);
-                    printf("车次 %s 在 %s 的余票（简化展示）：\n", train_id, date);
+                    printf("车次 %s 在 %s 的余票（按等级）:\n", train_id, date);
                     for (int cls = 0; cls < 4; ++cls) {
-                        int free_count = 0;
-                        (void)free_count;
+                        /* 计算被占用座位数（通过扫描 booking list，以保持主程序简洁） */
+                        int used = 0;
+                        for (int i = 0; i < BL.size; ++i) {
+                            if (!BL.data[i].canceled && strcmp(BL.data[i].train_id, train_id)==0 && strcmp(BL.data[i].date, date)==0 && BL.data[i].seat_class==cls) used++;
+                        }
+                        int remain = t->seat_count[cls] - used;
+                        if (remain < 0) remain = 0;
+                        printf("  等级 %d: %d / %d\n", cls, remain, t->seat_count[cls]);
                     }
-                    puts("(要查看精确余票请使用 booking 模块的查询或导出座位映射，主程序示例输出略)");
-                } else if (c == 7) {
-                    booking_list_all(&BL);
-                } else puts("无效选项");
+                } else if (c == 7) booking_list_all(&BL);
+                else puts("无效选项");
             }
+        } else if (ch == 4) {
+            save_all(&TL, &PL, &BL);
+        } else if (ch == 5) {
+            load_all(&TL, &PL, &BL);
         } else {
             puts("无效选项");
         }
     }
-    
+
     trainlist_free(&TL);
     passengerlist_free(&PL);
     bookinglist_free(&BL);

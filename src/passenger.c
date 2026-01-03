@@ -1,3 +1,4 @@
+/* passenger.c（增加持久化） */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -77,4 +78,45 @@ void passenger_list_all(PassengerList *L) {
         printf("姓名:%s  证件:%s(%s)  手机:%s  紧急联系人:%s(%s)\n",
                p->name, p->id_num, p->id_type, p->phone, p->emergency_contact, p->emergency_phone);
     }
+}
+
+
+int save_passengers(const char *filename, PassengerList *L) {
+    FILE *f = fopen(filename, "w");
+    if (!f) return 0;
+    fprintf(f, "%d\n", L->size);
+    for (int i = 0; i < L->size; ++i) {
+        Passenger *p = &L->data[i];
+        fprintf(f, "%s|%s|%s|%s|%s|%s\n",
+                p->id_type, p->id_num, p->name, p->phone, p->emergency_contact, p->emergency_phone);
+    }
+    fclose(f);
+    return 1;
+}
+
+int load_passengers(const char *filename, PassengerList *L) {
+    FILE *f = fopen(filename, "r");
+    if (!f) return 0;
+    int count = 0;
+    if (fscanf(f, "%d\n", &count) != 1) { fclose(f); return 0; }
+    char line[512];
+    for (int i = 0; i < count; ++i) {
+        if (!fgets(line, sizeof(line), f)) { fclose(f); return 0; }
+        size_t ln = strlen(line); if (ln && line[ln-1]=='\n') line[ln-1]=0;
+        char *parts[6]; int p = 0;
+        char *tok = strtok(line, "|");
+        while (tok && p < 6) { parts[p++] = tok; tok = strtok(NULL, "|"); }
+        if (p < 6) { fclose(f); return 0; }
+        Passenger pp;
+        memset(&pp, 0, sizeof(pp));
+        strncpy(pp.id_type, parts[0], sizeof(pp.id_type)-1);
+        strncpy(pp.id_num, parts[1], sizeof(pp.id_num)-1);
+        strncpy(pp.name, parts[2], sizeof(pp.name)-1);
+        strncpy(pp.phone, parts[3], sizeof(pp.phone)-1);
+        strncpy(pp.emergency_contact, parts[4], sizeof(pp.emergency_contact)-1);
+        strncpy(pp.emergency_phone, parts[5], sizeof(pp.emergency_phone)-1);
+        passenger_add(L, &pp);
+    }
+    fclose(f);
+    return 1;
 }

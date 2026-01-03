@@ -15,7 +15,6 @@ typedef struct {
     int distance;
 } Stop;
 
-
 typedef struct {
     char train_id[ID_LEN];
     char from[STATION_LEN];
@@ -29,7 +28,7 @@ typedef struct {
     int seat_count[4];
     double seat_price_coef[4];
 
-    void *seatmaps; 
+    void *seatmaps;
     int seatmap_count;
     int seatmap_capacity;
 } Train;
@@ -59,9 +58,18 @@ int train_allocate_seat(TrainList *TL, const char *train_id, const char *date,
                         const char *from, const char *to, int seat_class,
                         int *out_seat_index, int *out_from_idx, int *out_to_idx);
 
+
 int train_release_seat(TrainList *TL, const char *train_id, const char *date,
                        int seat_class, int seat_index, int from_idx, int to_idx);
 
+
+int train_mark_seat(TrainList *TL, const char *train_id, const char *date,
+                    int seat_class, int seat_index, int from_idx, int to_idx);
+
+
 int train_find_stop_idx(Train *t, const char *station);
+
+int save_trains(const char *filename, TrainList *L);
+int load_trains(const char *filename, TrainList *L);
 
 #endif 
