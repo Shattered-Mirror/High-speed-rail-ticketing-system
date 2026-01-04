@@ -1,4 +1,20 @@
 # 高铁订票系统
+**前言**
+
+本库有三个分支 master ， feature1，feature2
+
+master分支下total booking中的有test1,test2
+
+test1是简单的订票程序，数据结构用到了顺序表和动态数组
+
+test2是加强版的，在test1的基础上加了区间占座与座位分配，索引结构（提高查询效率）
+
+master分支下exercise是对一些基础知识的训练，如文件读取，数据结构，指针等
+
+feature1 是在test2下将代码拆分为 .c/.h 模块并写单元测试
+
+feature2 是在feature1下持久化（文本文件）
+
 
 版本说明
 - 语言：C（兼容 C99）
