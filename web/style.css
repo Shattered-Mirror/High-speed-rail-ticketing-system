@@ -1,0 +1,6 @@
+body { font-family: Arial, "Microsoft Yahei", sans-serif; margin: 20px; }
+h1 { color: #1565c0; }
+section { margin-top: 18px; border-top: 1px solid #ddd; padding-top: 10px; }
+.train, .passenger, .booking { padding: 6px; border: 1px solid #eee; margin: 6px 0; background: #fafafa; }
+#controls button { margin-right: 8px; }
+form input { margin: 4px; padding: 6px; }

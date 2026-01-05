@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <title>高铁订票系统 - Web 前端</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>高铁订票系统（演示）</h1>
+  <div id="controls">
+    <button id="reloadAll">刷新所有数据</button>
+    <button id="saveAll">保存到文件</button>
+    <button id="loadAll">从文件载入</button>
+  </div>
+
+  <section>
+    <h2>车次（Trains）</h2>
+    <div id="trains"></div>
+  </section>
+
+  <section>
+    <h2>乘客（Passengers）</h2>
+    <div id="passengers"></div>
+
+    <h3>添加乘客</h3>
+    <form id="addPassengerForm">
+      <input name="id_type" placeholder="证件类别" value="身份证" required>
+      <input name="id_num" placeholder="证件号" required>
+      <input name="name" placeholder="姓名" required>
+      <input name="phone" placeholder="手机号">
+      <input name="emergency_contact" placeholder="紧急联系人">
+      <input name="emergency_phone" placeholder="紧急联系人电话">
+      <button type="submit">添加乘客</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>订票（Booking）</h2>
+    <form id="bookForm">
+      <input name="date" placeholder="YYYY-MM-DD" required>
+      <input name="train_id" placeholder="车次号" required>
+      <input name="from" placeholder="起点站" required>
+      <input name="to" placeholder="终点站" required>
+      <input name="passenger_id" placeholder="乘车证件号" required>
+      <input name="seat_class" placeholder="座位等级(0..3)" required>
+      <button type="submit">提交订票</button>
+    </form>
+
+    <h3>退票</h3>
+    <form id="cancelForm">
+      <input name="order_id" placeholder="订单号" required>
+      <button type="submit">退票</button>
+    </form>
+
+    <h3>订单列表</h3>
+    <div id="bookings"></div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
