@@ -1,7 +1,7 @@
 # 高铁订票系统
 **前言**
 
-本库有三个分支 master ， feature1，feature2
+本库有四个分支 main,master ， feature1，feature2
 
 master分支下total booking中的有test1,test2
 
