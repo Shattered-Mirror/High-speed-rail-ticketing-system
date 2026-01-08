@@ -26,7 +26,6 @@ int main(void) {
     Passenger p2 = PL.data[idx];
     ASSERT(strcmp(p2.name, "Alice") == 0, "passenger name matches");
 
-    /* update phone */
     strncpy(p2.phone, "1391111", sizeof(p2.phone)-1);
     ASSERT(passenger_update(&PL, "P123", &p2) == 0, "passenger_update returns 0");
     int idx2 = passenger_find_index(&PL, "P123");
