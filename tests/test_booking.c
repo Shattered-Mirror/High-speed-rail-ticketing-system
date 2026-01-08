@@ -12,7 +12,7 @@ int main(void) {
     TrainList TL; PassengerList PL; BookingList BL;
     trainlist_init(&TL); passengerlist_init(&PL); bookinglist_init(&BL);
 
-    /* create train with single seat in class 2 */
+
     Train t;
     memset(&t, 0, sizeof(t));
     strncpy(t.train_id, "T100", ID_LEN-1);
@@ -30,7 +30,6 @@ int main(void) {
     for (int i=0;i<4;i++) t.seat_price_coef[i]=1.0;
     ASSERT(train_add(&TL, &t) == 0, "train added");
 
-    /* add passenger */
     Passenger p;
     memset(&p,0,sizeof(p));
     strncpy(p.id_type, "ID", sizeof(p.id_type)-1);
@@ -38,22 +37,18 @@ int main(void) {
     strncpy(p.name, "Bob", sizeof(p.name)-1);
     ASSERT(passenger_add(&PL, &p) == 0, "passenger added");
 
-    /* first booking should succeed */
     char order_id[ORDER_ID_LEN];
     int res = booking_create(&BL, &TL, &PL, "2026-01-11", "T100", "A", "B", "PX", 2, order_id, sizeof(order_id));
     ASSERT(res == 0, "first booking success");
     ASSERT(strlen(order_id) > 0, "order id produced");
 
-    /* second booking same seat should fail (no seat) */
     char order2[ORDER_ID_LEN];
     res = booking_create(&BL, &TL, &PL, "2026-01-11", "T100", "A", "B", "PX", 2, order2, sizeof(order2));
     ASSERT(res == -2, "second booking fails due to no seat");
 
-    /* cancel first booking */
     res = booking_cancel(&BL, order_id, &TL);
     ASSERT(res == 0, "cancel booking succeeded");
 
-    /* after cancel, booking again should succeed */
     char order3[ORDER_ID_LEN];
     res = booking_create(&BL, &TL, &PL, "2026-01-11", "T100", "A", "B", "PX", 2, order3, sizeof(order3));
     ASSERT(res == 0, "booking after cancel succeeds");
