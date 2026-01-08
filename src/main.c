@@ -29,7 +29,6 @@ static double input_double(const char *prompt)
 	return atof(buf);
 }
 
-/* menus */
 int main_menu()
 {
 	puts("==== 高铁订票系统（模块化+持久化） ====");
@@ -356,7 +355,6 @@ int main(void)
 					Train *t = train_get(&TL, idx);
 					printf("车次 %s 在 %s 的余票（按等级）:\n", train_id, date);
 					for (int cls = 0; cls < 4; ++cls) {
-						/* 计算被占用座位数（通过扫描 booking list，以保持主程序简洁） */
 						int used = 0;
 						for (int i = 0; i < BL.size; ++i) {
 							if (!BL.data[i].canceled && strcmp(BL.data[i].train_id, train_id)==0 && strcmp(BL.data[i].date, date)==0 && BL.data[i].seat_class==cls)
